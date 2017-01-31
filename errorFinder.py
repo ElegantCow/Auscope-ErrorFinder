@@ -7,6 +7,15 @@ Created on Mon Aug 29 17:16:45 2016
 
 """
 
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Aug 29 17:16:45 2016
+
+@author: askahlon
+
+"""
+
 import datetime
 
 
@@ -91,7 +100,7 @@ def findScansAffected (sumFilePath,stowTimes,doyRange,telescopeSlew):
 	sumFile.close()
 	return scansAffected
 
-def printSavedData (stowTimes,slewTimes,scansAffectedStow,scansAffectedSlew,experiment, station,printSlew,printSlewScan):
+def writeSavedData (stowTimes,slewTimes,scansAffectedStow,scansAffectedSlew,experiment, station,printSlew,printSlewScan):
 	stowTimes = stowTimes
 	slewTimes = slewTimes	
 	scansAffectedStow = scansAffectedStow
@@ -121,7 +130,7 @@ def printSavedData (stowTimes,slewTimes,scansAffectedStow,scansAffectedSlew,expe
 		    count2 = count2 +2   
 	print '  \n'
 	print '  \n'
-	if printSlew == "yes" or printSlew == "y" or printSlew == "Yes" or printSlew == "Y":  
+	if printSlew.lower() == "yes" or printSlew.lower() == "y":
 		print 'Onsource status is Slewing Errors:\n'
 		if len(scansAffectedSlew) == 0:
 			 StowTimes.write('There were no Slewing errors.\n')	
@@ -129,27 +138,39 @@ def printSavedData (stowTimes,slewTimes,scansAffectedStow,scansAffectedSlew,expe
 			for count3, times in enumerate(slewTimes):
 				print  slewTimes[count3] +'\n' 
 			print'  \n'
-			if printSlewScan == "yes" or printSlewScan == "y" or printSlewScan == "Yes" or printSlewScan == "Y":
+			if printSlewScan.lower() == "yes" or printSlewScan.lower() == "y":
 				print 'The scans affected by slewing errors:\n'
 				for count4, scans in enumerate(scansAffectedSlew):
 					print scansAffectedSlew[count4] +'\n' 
 	
-	 
+def fetchlog(station, experiment):
+    import os
+    print('Retrieving %s%s.log from pcfs%s' %(experiment,station,station))
+    os.system('scp oper@pcfs%s:/usr2/log/%s%s.log /vlbobs/ivs/logs/' %(station,experiment,station))
 
 def main(): # calls all the other functions.
 	experiment = raw_input("Please enter the experiment name.\n")
 	station = raw_input("Please specify a station [hb|ke|yg].\n")
-	printSlew = raw_input("Would you like to list the Slewing errors? (Could be many) [yes|no].\n")
-	printSlewScan = raw_input("Would you like to list the scans associated with Slewing errors? (Could be many) [yes|no].\n")
+        newlog = raw_input("Would you like to fetch a new log?[y,N] (warning: overwrites log file on ops2)") or 'no'
+	printSlew = raw_input("Would you like to list the Slewing errors? (Could be many) [YES|no].\n") or 'yes'
+	printSlewScan = raw_input("Would you like to list the scans associated with Slewing errors? (Could be many) [YES|no].\n") or 'yes'
 	logFilePath = '/vlbobs/ivs/logs/'+ experiment + station + '.log'  
 	sumFilePath = '/vlbobs/ivs/sched/'+ experiment + station +'.sum'
-	telescopeSlew = 10  #slew time of the telescope, to give it some time to reach source	
+	
+        if newlog.lower() == 'y' or newlog.lower() == 'yes':
+            fetchlog(station, experiment)
+        
+        telescopeSlew = 10  #slew time of the telescope, to give it some time to reach source	
 	stowTimes, slewTimes, doy = findErrors(logFilePath)
-	doyRange = [str(doy),str(doy+1)] #possible values of Day of year
+	if doy <100:
+		doyRange = ['0'+str(doy-1),'0'+str(doy),'0'+str(doy+1)]
+	else:
+		doyRange = [str(doy-1),str(doy),str(doy+1)]
 	scansAffectedStow = findScansAffected(sumFilePath, stowTimes, doyRange,telescopeSlew)
 	scansAffectedSlew = findScansAffected(sumFilePath, slewTimes, doyRange, 0)
 	scansAffectedSlew = uniqueList(scansAffectedSlew)
-	printSavedData(stowTimes, slewTimes, scansAffectedStow,scansAffectedSlew,experiment,station,printSlew,printSlewScan) # write it to a file
+	writeSavedData(stowTimes, slewTimes, scansAffectedStow,scansAffectedSlew,experiment,station,printSlew,printSlewScan) # write it to a file
 	
 main() # run the main function
+	   
 	   
